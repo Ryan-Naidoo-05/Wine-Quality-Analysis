@@ -1,4 +1,4 @@
-# Wine-Quality-Analysis
+# EDA and Supervised Segmentation Analysis of Red Wine
 A solution to the classification problem: "What makes wine good?"
 
 ## Dataset
