@@ -12,3 +12,14 @@ Download [here](https://www.openml.org/search?type=data&sort=runs&id=40691&statu
   - `tidyverse` (ggplot2, dplyr, tidyr) – Data manipulation & visualization  
   - `corrplot` – Correlation matrices  
   - `rmarkdown` – Dynamic report generation  
+
+## Project Process
+
+### Preprocessing
+-Loaded relevant libraries and dataset "winequality-red.csv"
+-Edited the table to add the "is_good" column, which ensures a relevant target variable.
+-Ensured that this mutated column was in a "factor" format for categorical usage.
+
+### Exploratory Descriptive Analysis
+
+-Built a bar graph the visualise the number of records for each quality category.
