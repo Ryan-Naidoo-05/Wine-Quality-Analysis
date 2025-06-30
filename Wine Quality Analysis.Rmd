@@ -1,0 +1,161 @@
+---
+title: "Wine Quality Analysis"
+author: "Ryan Naidoo"
+date: "2025-06-26"
+output: html_document
+knitr:
+  opts_chunk:
+    warning: FALSE    # Hide warnings
+    message: FALSE    # Hide package loading messages
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analysis of the physio-chemical qualities of wine
+
+### What makes wine good?
+
+```{r libraries, include = FALSE}
+
+library(tidyverse)    # Data manipulation
+library(rpart)        # Decision tree algorithm
+library(rpart.plot)   # Visualizing trees
+library(caret)        # Model evaluation
+library(ggplot2)
+
+
+```
+
+## We begin with the mutation of our data-set so that we have a column that tells us whether wine is good or not
+
+```{r Preprocessing, include = TRUE}
+
+
+data <- read.csv("winequality-red.csv", sep = ",", header = TRUE) #read in the dataset that we are working with
+
+data <- data %>% #Build that additionally column using the 
+mutate(is_good = ifelse(quality >= 7, "Good", "Not Good"))
+
+
+#We now have a comparison metric that we may use to check whether wine is good or not
+```
+
+## Let us do some simple EDA.
+
+### I expect that for alchohol quality, residual sugar content and pH are some important factors in determining whether wine is good or not. Let us plot a scatterplot and investigate the lines of best fit, aswell as assesssing the correlations. This will give us a base understanding of which one of these variables is the most important in the quality of red wine.
+
+```{r EDA, include = TRUE}
+
+#Bar graph showing wine ratings per quality.
+ggplot(data, aes(x=quality)) + 
+  geom_bar(color = "red", fill = "red") +
+  ggtitle("Distribution of Wine Quality Ratings") +  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5)) + labs(title = "Wine Quality Ratings",
+       x = "Quality Score (1-8)",
+       y = "Count") 
+
+
+# Alchohol and Quality relationship, line of best fit also provided.
+ggplot(data, aes(x=alcohol, y=quality)) +
+  geom_point(color = "green") +
+  geom_smooth(method="lm") + labs(title = "Relationship Between Alcohol Content and Wine Quality Ratings",
+       x = "Alcohol (% by volume)",
+       y = "Quality Score (1-8)") + theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+#Assessing the correlation of alchohol and quality
+cor(data$alcohol, data$quality)
+
+#Residual sugar content and wine quality relationship
+
+ggplot(data, aes(x=residual.sugar, y=quality)) +
+  geom_point(color = "purple") +
+  geom_smooth(method="lm") + labs(title = "Relationship Between Residual Sugar Content and Wine Quality Ratings",
+       x = "Residual sugar content",
+       y = "Quality Score (1-8)") + theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+#Assessing the correlation of residual sugar and quality
+
+cor(data$residual.sugar, data$quality)
+
+#Investigating the relationship of ph and quality
+
+ggplot(data, aes(x=pH, y=quality)) +
+  geom_point(color = "orange") +
+  geom_smooth(method="lm") + labs(title = "Relationship Between Residual Sugar Content and Wine Quality Ratings",
+       x = "Residual sugar content",
+       y = "Quality Score (1-8)") + theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+cor(data$pH, data$quality)
+
+
+
+```
+
+### After looking at the plots that we have created, aswell as their preceeding correlation values, we see that the only statistically significant one in our investigation is the alchohol content of the wine. There is a moderate positive correlation between alchohol content and wine quality. We hope that this can important in our study, as we begin to plot our first machine learning model.
+
+## Let us build a decision tree to see which variables provide the most information gain and reduce entropy:
+
+```{r tree, include = TRUE}
+
+# Convert to factor (required for classification)
+data$is_good <- as.factor(data$is_good)
+
+# Split data into training (80%) and testing (20%)
+set.seed(123)  # For reproducibility
+train_index <- createDataPartition(data$is_good, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data <- data[-train_index, ]
+
+#Let us train the tree:
+
+tree_model <- rpart(
+  is_good ~ . -quality,  # Use all predictors (or specify key ones)
+  data = train_data,
+  method = "class",
+  control = rpart.control(
+    minsplit = 20,    # Minimum samples to split (increase to reduce splits)
+    minbucket = 10,   # Minimum samples in leaf nodes
+    cp = 0.02,        # Complexity parameter (higher = simpler tree)
+    maxdepth = 4      # Limit tree depth (critical for readability)
+  )
+)
+
+
+rpart.plot(tree_model, 
+           type = 4,          # Detailed plot
+           extra = 104,       # Show probabilities and sample sizes
+           box.palette = "Blues", 
+           nn = TRUE)         # Show node numbers
+
+```
+
+### Our decision tree provides us with rules that we can follow in order to trace a given bottle of wine is good or not. Each split in the tree reduces the enthalpy of the nodes, until we are left with completely pure nodes. The first split in the tree is "Alchohol", where 85% of the data have content less than 12% and 15% have alchohol content greater than 12%. We then do splits based on sulphate content and volatile acidity and continue to split until we get to the leaf nodes. Since alchohol is the first split in our decision tree, we rule this as the most important factor that the tree model relies on. 
+
+## We follow by taking a final look at a confusion matrix and conclude by discussing the most important element in the study of physio-chemical properties of red wine, the alchohol content.
+
+``` {r confusionMatrix}
+
+# Predict on test data
+predictions <- predict(tree_model, test_data, type = "class")
+
+# Confusion matrix
+confusionMatrix(predictions, test_data$is_good)
+
+```
+
+## After analysing the confusion matrix, my model achieves a 90% accuracy, but struggles with the minority case, which entails classifiying whether a bottle of wine is "not good". As a learning experience, this was an excellent display of a model, but may struggle in real practicla sense situations, when required to detect whether a bottle is good, versus not good.
+
+# Let us analyse the importance of the variables in our tree:
+
+```{r variableAnalysis, include = TRUE}
+
+tree_model$variable.importance
+
+```
+
+### From this, we see that the most important variable in terms of predicting whether a red wine is good or not, is alchohol percentage. The variable score are most likely Gini index (which measures the reduction and enthalpy/impurity). We see that alchohol is the strongest predictor, whereas residual sugar is almost negligible.
+
+# Summary and conlusion:
+
+### After a detailed analysis of the red wine data set, we plotted a tree to form decision rules to predict whether wine was good or not. The tree showed us that the most important predictor for determining the quality of wine was the alchohol content. This is further boasted by the plots that we created earlier in the study, which showed that there is a positive correlation between quality and alchohol, which was a stronger correlation that the ones that were between pH and residual sugar. Additionally, residual sugar was determined to be the most negligable aspect in determining whether a wine is of good quality or not.
