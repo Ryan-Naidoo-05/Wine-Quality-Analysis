@@ -1,6 +1,9 @@
 # EDA and Supervised Segmentation Analysis of Red Wine
 A solution to the classification problem: "What makes wine good?"
 
+This repo contains **R Markdown** (`.Rmd`) files.  
+GitHub may misclassify them as HTML—ignore this; they are R-based
+
 ## Dataset
 Download [here](https://www.openml.org/search?type=data&sort=runs&id=40691&status=active)
 
